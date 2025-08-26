@@ -1518,7 +1518,7 @@ document.addEventListener('click', (e) => {
     const cells = tr.querySelectorAll('td:not(.actions)');
     const willEdit = cells[0]?.getAttribute('contenteditable') !== 'true';
 
-    cells.forEach(td => td.setAttribute('contenteditable', willEdit ? 'true' : 'false'));
+    cells.forEach(td => td.setAttribute('contenteditable', willEdit ? 'true': 'false'));
 
     // mantém ícones (lápis ↔ check) em vez de texto
     btn.innerHTML = willEdit
@@ -1536,13 +1536,13 @@ document.addEventListener('click', (e) => {
   if (li) {
     const el = li.querySelector('.text');
     const willEdit = el.getAttribute('contenteditable') !== 'true';
-    el.setAttribute('contenteditable', willEdit ? 'true' : 'false');
+    el.setAttribute('contenteditable', willEdit ? 'true': 'false');
 
     btn.innerHTML = willEdit
       ? '<i class="fa-solid fa-check"></i>'
       : '<i class="fa-solid fa-pen-to-square"></i>';
-    btn.setAttribute('title', willEdit ? 'Concluir' : 'Editar');
-    btn.setAttribute('aria-label', willEdit ? 'Concluir' : 'Editar');
+    btn.setAttribute('title', willEdit ? 'Concluir': 'Editar');
+    btn.setAttribute('aria-label', willEdit ? 'Concluir': 'Editar');
 
     if (!willEdit) save();
     return;
