@@ -1274,6 +1274,7 @@ function updateStats(){
 
 // run once on load
 document.addEventListener('DOMContentLoaded',()=>{
+  try { dedupeActionsOnce?.(); save?.(); } catch(e){}
   if(typeof updateStats==='function') updateStats();
   if(typeof upgradeActionButtons==='function') upgradeActionButtons();
   document.querySelectorAll('table.grid').forEach(tbl=>{
@@ -1418,6 +1419,7 @@ if (typeof updateStats !== 'function') {
 
 // ==== Initializer on load ====
 window.addEventListener('DOMContentLoaded', () => {
+  try { dedupeActionsOnce?.(); save?.(); } catch(e){}
   // attach sorting to existing tables (if not already attached)
   document.querySelectorAll('table.grid').forEach(tbl => {
     try { if (typeof attachSorting === 'function') attachSorting(tbl); } catch(e){}
@@ -1629,6 +1631,15 @@ document.addEventListener('click', (e) => {
 }
 
 });
-  </script>
+  
+const MIG_DEDUPE = LS_PREFIX + '.migrated.dedupe.v1';
+window.addEventListener('DOMContentLoaded', () => {
+  if (!localStorage.getItem(MIG_DEDUPE)) {
+    try { upgradeActionButtons?.(); dedupeActionsOnce?.(); save?.(); } catch(e){}
+    localStorage.setItem(MIG_DEDUPE, '1');
+  }
+});
+
+</script>
 </body>
 </html>
