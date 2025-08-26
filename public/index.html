@@ -998,16 +998,75 @@ function upgradeActionButtons(){
     const tableToJSON=(tbl)=>{const headers=$all('thead th',tbl).map(th=>th.innerText.trim()).filter(h=>h!=='Ações');const rows=$all('tbody tr',tbl).map(tr=>{const obj={};$all('td',tr).forEach((td,i)=>{if(headers[i]) obj[headers[i]]=td.innerHTML.replace(/<br>/g,'\n').trim()});return obj});return {id:tbl.id,headers,rows}};
     const listToJSON=(ul)=>({id:ul.id,items:$all('li .text',ul).map(x=>x.innerText)});
     function buildState(){return{tables:$all('table.grid').map(tableToJSON),lists:$all('ul.bullets').map(listToJSON),notes:$('#quickNotes')?.value||'',session:$('#sessionCount')?.textContent||'1',theme:document.documentElement.getAttribute('data-theme')||'dark'}}
-    function applyState(data){
-  if(!data) return; suppressSync=true;
+    
+function applyState(data){
+  if(!data) return;
+  suppressSync = true;
   try{
-    // ... recria tabelas/listas, notas, tema etc.
-    updateStats();
-    fixHeaderGutter();          // <-- adicionada
+    // 1) Tabelas
+    if (Array.isArray(data.tables)) {
+      data.tables.forEach(t => {
+        const tbl = document.getElementById(t.id);
+        if (!tbl) return;
+        const thead = tbl.querySelector('thead');
+        const tbody = tbl.querySelector('tbody');
+        if (thead && Array.isArray(t.headers)) {
+          // (Mantém a coluna Ações no fim)
+          const headHtml = t.headers.map(h => `<th>${h}</th>`).join('') + '<th class="actions">Ações</th>';
+          thead.innerHTML = `<tr>${headHtml}</tr>`;
+        }
+        if (tbody && Array.isArray(t.rows)) {
+          const rowsHtml = t.rows.map(row => {
+            const cols = t.headers.map(h => {
+              const val = (row[h] || '').replace(/
+/g,'<br>');
+              return `<td contenteditable="false">${val}</td>`;
+            }).join('');
+            return `<tr>${cols}<td class="actions">${actionsHTML()}</td></tr>`;
+          }).join('');
+          tbody.innerHTML = rowsHtml;
+        }
+      });
+    }
+
+    // 2) Listas (ex.: missões)
+    if (Array.isArray(data.lists)) {
+      data.lists.forEach(lst => {
+        const ul = document.getElementById(lst.id);
+        if (!ul) return;
+        const itemsHtml = (lst.items||[]).map(text => (
+          `<li><div class="text" contenteditable="false">${(text||'')}</div>${actionsHTML()}</li>`
+        )).join('');
+        ul.innerHTML = itemsHtml;
+      });
+    }
+
+    // 3) Notas rápidas
+    if (typeof data.notes === 'string' && document.getElementById('quickNotes')) {
+      document.getElementById('quickNotes').value = data.notes;
+    }
+
+    // 4) Sessão
+    if (data.session && document.getElementById('sessionCount')) {
+      document.getElementById('sessionCount').textContent = data.session;
+    }
+
+    // 5) Tema
+    if (data.theme) {
+      document.documentElement.setAttribute('data-theme', data.theme);
+    }
+
+    // Reaplicar comportamentos
+    try { if (typeof upgradeActionButtons === 'function') upgradeActionButtons(); } catch(e){}
+    try { if (typeof attachSorting === 'function') document.querySelectorAll('table.grid').forEach(attachSorting); } catch(e){}
+    try { if (typeof updateStats === 'function') updateStats(); } catch(e){}
+    try { if (typeof fixHeaderGutter === 'function') fixHeaderGutter(); } catch(e){}
   } finally {
-    setTimeout(()=>suppressSync=false,50)
+    // libera sync após um pequeno atraso
+    setTimeout(()=>{ suppressSync = false; }, 50);
   }
 }
+
 
 
     const emitUpdateDebounced=debounce(()=>{if(suppressSync||!socket) return; socket.emit('state:update',buildState())},400);
@@ -1518,7 +1577,7 @@ document.addEventListener('click', (e) => {
     const cells = tr.querySelectorAll('td:not(.actions)');
     const willEdit = cells[0]?.getAttribute('contenteditable') !== 'true';
 
-    cells.forEach(td => td.setAttribute('contenteditable', willEdit ? 'true': 'false'));
+    cells.forEach(td => td.setAttribute('contenteditable', willEdit ? 'true' : 'false'));
 
     // mantém ícones (lápis ↔ check) em vez de texto
     btn.innerHTML = willEdit
@@ -1536,13 +1595,13 @@ document.addEventListener('click', (e) => {
   if (li) {
     const el = li.querySelector('.text');
     const willEdit = el.getAttribute('contenteditable') !== 'true';
-    el.setAttribute('contenteditable', willEdit ? 'true': 'false');
+    el.setAttribute('contenteditable', willEdit ? 'true' : 'false');
 
     btn.innerHTML = willEdit
       ? '<i class="fa-solid fa-check"></i>'
       : '<i class="fa-solid fa-pen-to-square"></i>';
-    btn.setAttribute('title', willEdit ? 'Concluir': 'Editar');
-    btn.setAttribute('aria-label', willEdit ? 'Concluir': 'Editar');
+    btn.setAttribute('title', willEdit ? 'Concluir' : 'Editar');
+    btn.setAttribute('aria-label', willEdit ? 'Concluir' : 'Editar');
 
     if (!willEdit) save();
     return;
