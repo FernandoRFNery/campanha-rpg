@@ -945,6 +945,10 @@ body.is-col-resizing{ cursor: col-resize !important; user-select: none; }
 
     let suppressSync = false; // prevent loops when applying remote state
     let socket = null;
+// connect to Socket.IO on same origin
+socket = io();
+// apply incoming state to this client
+socket.on('state:apply', (data) => { try { if (!suppressSync && data) applyState(data); } catch(e){ console.error(e); } });
     const debounce=(fn,wait=500)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),wait)}};
     const normalize=(s)=>{try{return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}catch(e){return (s||'').toLowerCase()}};
     const $=(sel,root=document)=>root.querySelector(sel);
@@ -1017,6 +1021,8 @@ function upgradeActionButtons(){
   updateStats();
   fixHeaderGutter();            // <-- adicionada
   emitUpdateDebounced();
+  // fallback: save via REST too
+  try { fetch('/state', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(buildState()) }); } catch (e) { console.warn('POST /state failed', e); }
 }
     function load(){const html=localStorage.getItem(LS_HTML); if(html){$('main').innerHTML=html}const theme=localStorage.getItem(LS_THEME); if(theme){document.documentElement.setAttribute('data-theme',theme)}const notes=localStorage.getItem(LS_NOTES); if(notes&&$('#quickNotes')) $('#quickNotes').value=notes;const sess=localStorage.getItem(LS_SESSION); if(sess) $('#sessionCount').textContent=sess}
 
