@@ -1018,8 +1018,7 @@ function applyState(data){
         if (tbody && Array.isArray(t.rows)) {
           const rowsHtml = t.rows.map(row => {
             const cols = t.headers.map(h => {
-              const val = (row[h] || '').replace(/
-/g,'<br>');
+              const val = (row[h] || '').replace(/\n/g,'<br>');
               return `<td contenteditable="false">${val}</td>`;
             }).join('');
             return `<tr>${cols}<td class="actions">${actionsHTML()}</td></tr>`;
