@@ -934,8 +934,60 @@ body.is-col-resizing{ cursor: col-resize !important; user-select: none; }
   </main>
   <div class="snackbar" id="snackbar">Item removido. <button class="btn" id="undoBtn">Desfazer</button></div>
 
-  <script src="/socket.io/socket.io.js"></script>
+  <script src="/socket.io/socket.io.js">
+// === Startup sequence (clean) ===
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    // Load previously saved content if present
+    if (typeof load === 'function') load();
+
+    // Normalize UI (remove duplicated headers/cells and unify action buttons)
+    function dedupeHeadersOnce(){
+  document.querySelectorAll('table.grid thead').forEach(thead => {
+    // Work with thead's single row (create if missing)
+    const tr = thead.querySelector('tr') || thead.appendChild(document.createElement('tr'));
+    const ths = Array.from(tr.querySelectorAll('th'));
+    if (ths.length === 0) return;
+
+    // Keep only non-action headers
+    const nonActions = ths.filter(th => !th.classList.contains('actions'));
+
+    // Remove all existing action headers to avoid duplicates
+    ths.filter(th => th.classList.contains('actions')).forEach(th => th.remove());
+
+    // Rebuild the row: non-action headers first...
+    tr.innerHTML = '';
+    nonActions.forEach(th => tr.appendChild(th));
+
+    // ...then ensure exactly one 'Ações' header at the end
+    const action = document.createElement('th');
+    action.className = 'actions';
+    action.textContent = 'Ações';
+    tr.appendChild(action);
+  });
+}
+// run normalizers
+    try { if (typeof dedupeHeadersOnce === 'function') dedupeHeadersOnce(); } catch(e){}
+    try { if (typeof dedupeActionsOnce === 'function') dedupeActionsOnce(); } catch(e){}
+    try { if (typeof upgradeActionButtons === 'function') upgradeActionButtons(); } catch(e){}
+    try { if (typeof ensureEditablePartyLevels === 'function') ensureEditablePartyLevels(); } catch(e){}
+    try { if (typeof fixHeaderGutter === 'function') fixHeaderGutter(); } catch(e){}
+    try { if (typeof attachSorting === 'function') document.querySelectorAll('table.grid').forEach(attachSorting); } catch(e){}
+    try { if (typeof updateStats === 'function') updateStats(); } catch(e){}
+
+  } finally {
+    // allow saves from this point on
+    window.__BOOTING__ = false;
+    // persist normalized DOM once
+    try { if (typeof save === 'function') save(); } catch(e){}
+  }
+});
+
+</script>
   <script>
+
+    // Boot flag to avoid overwriting saved data during startup
+    window.__BOOTING__ = true;
     // ==== Keys & helpers ====
     const LS_PREFIX = 'campanha.v6.3';
     const LS_HTML = LS_PREFIX + '.html';
@@ -944,11 +996,21 @@ body.is-col-resizing{ cursor: col-resize !important; user-select: none; }
     const LS_SESSION = LS_PREFIX + '.session';
 
     let suppressSync = false; // prevent loops when applying remote state
-    let socket = null;
-// connect to Socket.IO on same origin
-socket = io();
-// apply incoming state to this client
-socket.on('state:apply', (data) => { try { if (!suppressSync && data) applyState(data); } catch(e){ console.error(e); } });
+    
+let socket = null;
+// connect to Socket.IO on same origin — guarded for local file usage
+try {
+  if (typeof window !== 'undefined' && typeof window.io === 'function') {
+    socket = io();
+    // apply incoming state to this client
+    socket.on('state:apply', (data) => {
+      try { if (!suppressSync && data) applyState(data); } catch(e){ console.error(e); }
+    });
+  }
+} catch (err) {
+  console.warn('Socket.IO not available; running offline mode.', err);
+}
+
     const debounce=(fn,wait=500)=>{let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),wait)}};
     const normalize=(s)=>{try{return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}catch(e){return (s||'').toLowerCase()}};
     const $=(sel,root=document)=>root.querySelector(sel);
@@ -1093,6 +1155,8 @@ function dedupeActionsOnce(){
 
     // ==== Save/Load ====
     function save(){
+  if (window.__BOOTING__) { return; }
+
   const mainEl=$('main'); if(mainEl){localStorage.setItem(LS_HTML,mainEl.innerHTML)}
   localStorage.setItem(LS_THEME,document.documentElement.getAttribute('data-theme')||'dark');
   localStorage.setItem(LS_NOTES,$('#quickNotes')?.value||'');
