@@ -977,22 +977,24 @@ const actionsHTML = () => (
     '</button>'+
   '</div>'
 );
+// 1) Versão idempotente: sempre reescreve a célula de ações
 function upgradeActionButtons(){
-  $all('.row-actions').forEach(box => {
-    const edit = box.querySelector('[data-row-edit]');
-    const del  = box.querySelector('[data-row-remove]');
-    if (edit && !edit.classList.contains('icon-btn')) {
-      edit.classList.add('icon-btn');
-      edit.innerHTML = '<i class="fa-solid fa-pen-to-square"></i>';
-      edit.title = 'Editar'; edit.setAttribute('aria-label','Editar');
-    }
-    if (del && !del.classList.contains('icon-btn')) {
-      del.classList.add('icon-btn','danger');
-      del.innerHTML = '<i class="fa-solid fa-trash"></i>';
-      del.title = 'Remover'; del.setAttribute('aria-label','Remover');
+  document.querySelectorAll('td.actions, th.actions').forEach(cell => {
+    // só normaliza no <td>, no <th> mantemos o rótulo "Ações"
+    if (cell.tagName === 'TD'){
+      cell.innerHTML = `
+        <div class="row-actions">
+          <button class="btn icon-btn" data-row-edit title="Editar" aria-label="Editar">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn icon-btn danger" data-row-remove title="Remover" aria-label="Remover">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>`;
     }
   });
 }
+
 
     // ==== State build/apply ====
     const tableToJSON=(tbl)=>{const headers=$all('thead th',tbl).map(th=>th.innerText.trim()).filter(h=>h!=='Ações');const rows=$all('tbody tr',tbl).map(tr=>{const obj={};$all('td',tr).forEach((td,i)=>{if(headers[i]) obj[headers[i]]=td.innerHTML.replace(/<br>/g,'\n').trim()});return obj});return {id:tbl.id,headers,rows}};
@@ -1027,7 +1029,7 @@ function applyState(data){
         }
       });
     }
-
+    
     // 2) Listas (ex.: missões)
     if (Array.isArray(data.lists)) {
       data.lists.forEach(lst => {
@@ -1065,6 +1067,25 @@ function applyState(data){
     setTimeout(()=>{ suppressSync = false; }, 50);
   }
 }
+function dedupeActionsOnce(){
+  document.querySelectorAll('td.actions').forEach(td => {
+    // mantém só UM .row-actions
+    const blocks = td.querySelectorAll('.row-actions');
+    if (blocks.length !== 1) {
+      td.innerHTML = ''; // limpa tudo
+      td.insertAdjacentHTML('beforeend', `
+        <div class="row-actions">
+          <button class="btn icon-btn" data-row-edit title="Editar" aria-label="Editar">
+            <i class="fa-solid fa-pen-to-square"></i>
+          </button>
+          <button class="btn icon-btn danger" data-row-remove title="Remover" aria-label="Remover">
+            <i class="fa-solid fa-trash"></i>
+          </button>
+        </div>`);
+    }
+  });
+}
+
 
 
 
